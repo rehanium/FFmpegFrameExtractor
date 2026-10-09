@@ -1,0 +1,32 @@
+<Application x:Class="FFmpegFrameExtractor.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:FFmpegFrameExtractor.Converters"
+             ShutdownMode="OnMainWindowClose">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Theme loaded at index 0, swapped at runtime -->
+                <ResourceDictionary Source="pack://application:,,,/Themes/DarkTheme.xaml"/>
+                <!-- Styles loaded after theme -->
+                <ResourceDictionary Source="pack://application:,,,/Resources/Styles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Global converter instances -->
+            <converters:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+            <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility"/>
+            <converters:InverseBoolConverter x:Key="InverseBool"/>
+            <converters:NullToVisibilityConverter x:Key="NullToVisibility"/>
+            <converters:NullToBoolConverter x:Key="NullToBool"/>
+            <converters:EnumToBoolConverter x:Key="EnumToBool"/>
+            <converters:PathToFileNameConverter x:Key="PathToFileName"/>
+            <converters:PercentageConverter x:Key="PercentageConv"/>
+            <converters:ExtractionModeDisplayConverter x:Key="ExtractionModeDisplay"/>
+            <converters:OutputFormatDisplayConverter x:Key="OutputFormatDisplay"/>
+            <converters:QualityPresetDisplayConverter x:Key="QualityPresetDisplay"/>
+            <converters:SuccessBrushConverter x:Key="SuccessBrushConv"/>
+            <converters:EmptyStringToCollapsedConverter x:Key="EmptyToCollapsed"/>
+            <converters:CountToVisibilityConverter x:Key="CountToVisibility"/>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

@@ -1,0 +1,1375 @@
+<Window x:Class="FFmpegFrameExtractor.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:FFmpegFrameExtractor.ViewModels"
+        xmlns:models="clr-namespace:FFmpegFrameExtractor.Models"
+        xmlns:converters="clr-namespace:FFmpegFrameExtractor.Converters"
+        Title="{Binding Title}"
+        Width="1280" Height="850"
+        MinWidth="1000" MinHeight="650"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        AllowDrop="True"
+        Drop="Window_Drop"
+        DragOver="Window_DragOver"
+        Closing="Window_Closing">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>   <!-- Row 0: Header bar -->
+            <RowDefinition Height="*"/>      <!-- Row 1: Main content -->
+            <RowDefinition Height="Auto"/>   <!-- Row 2: Progress bar -->
+            <RowDefinition Height="Auto"/>   <!-- Row 3: Status bar -->
+        </Grid.RowDefinitions>
+
+        
+        <Border Grid.Row="0"
+                Background="{DynamicResource HeaderGradientBrush}"
+                BorderBrush="{DynamicResource DividerBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid Margin="20,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- App icon + title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Viewbox Width="28" Height="28" Margin="0,0,10,0">
+                        <Canvas Width="24" Height="24">
+                            <!-- Film strip icon (vector) -->
+                            <Rectangle Canvas.Left="1" Canvas.Top="3" Width="22" Height="18"
+                                       Fill="{DynamicResource AccentBrush}" RadiusX="2" RadiusY="2"/>
+                            <Rectangle Canvas.Left="1" Canvas.Top="3" Width="4" Height="4"
+                                       Fill="{DynamicResource BackgroundBrush}"/>
+                            <Rectangle Canvas.Left="1" Canvas.Top="10" Width="4" Height="4"
+                                       Fill="{DynamicResource BackgroundBrush}"/>
+                            <Rectangle Canvas.Left="1" Canvas.Top="17" Width="4" Height="4"
+                                       Fill="{DynamicResource BackgroundBrush}"/>
+                            <Rectangle Canvas.Left="19" Canvas.Top="3" Width="4" Height="4"
+                                       Fill="{DynamicResource BackgroundBrush}"/>
+                            <Rectangle Canvas.Left="19" Canvas.Top="10" Width="4" Height="4"
+                                       Fill="{DynamicResource BackgroundBrush}"/>
+                            <Rectangle Canvas.Left="19" Canvas.Top="17" Width="4" Height="4"
+                                       Fill="{DynamicResource BackgroundBrush}"/>
+                            <!-- Play arrow -->
+                            <Polygon Points="9,8 9,16 17,12" Fill="{DynamicResource BackgroundBrush}"/>
+                        </Canvas>
+                    </Viewbox>
+
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="FFmpeg Frame Extractor"
+                                   FontSize="{DynamicResource FontSizeLarge}"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <TextBlock Text="Advanced Frame Extraction Tool"
+                                   Style="{StaticResource TextMuted}"
+                                   Margin="0,-1,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- FFmpeg status chip -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border Style="{StaticResource StatusChipStyle}"
+                            Background="{DynamicResource Surface2Brush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Margin="0,0,6,0">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{DynamicResource ErrorBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding FfmpegAvailable}" Value="True">
+                                                <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{Binding FfmpegStatus}"
+                                       FontSize="{DynamicResource FontSizeSmall}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Action buttons -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding ToggleDarkModeCommand}" ToolTip="Toggle Dark/Light Mode" Style="{StaticResource GhostButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Margin="0,0,6,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource IconStyle}">
+                                        <Setter Property="Text" Value="&#xE708;"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDarkMode}" Value="False">
+                                                <Setter Property="Text" Value="&#xE706;"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Dark"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDarkMode}" Value="False">
+                                                <Setter Property="Text" Value="Light"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340" MinWidth="280"/>
+                <ColumnDefinition Width="5"/>   <!-- Splitter -->
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            
+            <Border Grid.Column="0"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource DividerBrush}"
+                    BorderThickness="0,0,1,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16,12">
+
+                        <!-- FILE INPUT SECTION -->
+                        <TextBlock Text="VIDEO SOURCE" Style="{StaticResource LabelStyle}"/>
+
+                        <!-- Drop zone / file picker -->
+                        <Border Name="DropZone"
+                                Style="{StaticResource DropZoneStyle}"
+                                MouseLeftButtonUp="DropZone_Click"
+                                Margin="0,0,0,8">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE714;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI Symbol" FontSize="36" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Drop video file here"
+                                           HorizontalAlignment="Center"
+                                           FontWeight="SemiBold"
+                                           Margin="0,6,0,2"/>
+                                <TextBlock Text="or click to browse"
+                                           Style="{StaticResource TextMuted}"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="MP4, MKV, AVI, MOV, WMV, FLV, WebM..."
+                                           Style="{StaticResource TextMuted}"
+                                           HorizontalAlignment="Center"
+                                           FontSize="11"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Selected file display -->
+                        <Border Visibility="{Binding HasVideoLoaded, Converter={StaticResource BoolToVisibility}}"
+                                Background="{DynamicResource CardBrush}"
+                                BorderBrush="{DynamicResource AccentBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource CornerRadiusSmall}"
+                                Padding="10,8"
+                                Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding VideoInfo.FileName}"
+                                               FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding InputFilePath}"/>
+                                    <TextBlock Foreground="{DynamicResource AccentBrush}"
+                                               FontSize="11">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}{0}     {1}     {2}">
+                                                <Binding Path="VideoInfo.ResolutionDisplay"/>
+                                                <Binding Path="VideoInfo.DurationDisplay"/>
+                                                <Binding Path="VideoInfo.FrameRateDisplay"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </StackPanel>
+                                <Button Grid.Column="1" Style="{StaticResource GhostButtonStyle}" Command="{Binding BrowseInputFileCommand}" ToolTip="Change file">
+                                    <TextBlock Text="&#xE711;" Style="{StaticResource IconStyle}" FontSize="10"/>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <Separator/>
+
+                        <!-- EXTRACTION MODE -->
+                        <TextBlock Text="EXTRACTION MODE" Style="{StaticResource LabelStyle}"/>
+
+                        <ComboBox ItemsSource="{Binding Options.ExtractionModes}"
+                                  SelectedItem="{Binding Options.Mode}"
+                                  Margin="0,0,0,8">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={StaticResource ExtractionModeDisplay}}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <!-- Mode-specific params panel -->
+                        <Border Background="{DynamicResource CardBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource CornerRadiusSmall}"
+                                Padding="10"
+                                Margin="0,0,0,12">
+                            <StackPanel>
+                                <!-- Every N Seconds -->
+                                <StackPanel Visibility="{Binding Options.ModeEveryNSeconds, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Interval (seconds)" Style="{StaticResource LabelStyle}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="80"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Slider Minimum="0.1" Maximum="300"
+                                                Value="{Binding Options.IntervalSeconds}"
+                                                TickFrequency="0.5"
+                                                IsSnapToTickEnabled="False"
+                                                VerticalAlignment="Center"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding Options.IntervalSeconds, StringFormat=F2}"
+                                                 Style="{StaticResource NumericTextBox}"
+                                                 Margin="8,0,0,0"/>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource TextMuted}" Margin="0,4,0,0">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="Extract 1 frame every {0:F1}s">
+                                                <Binding Path="Options.IntervalSeconds"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <!-- Fixed FPS -->
+                                <StackPanel Visibility="{Binding Options.ModeFrameRate, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Output FPS" Style="{StaticResource LabelStyle}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="80"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Slider Minimum="0.1" Maximum="60"
+                                                Value="{Binding Options.ExtractFps}"
+                                                VerticalAlignment="Center"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding Options.ExtractFps, StringFormat=F2}"
+                                                 Style="{StaticResource NumericTextBox}"
+                                                 Margin="8,0,0,0"/>
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- Specific Timestamps -->
+                                <StackPanel Visibility="{Binding Options.ModeSpecificTimestamps, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Timestamps (comma-separated)" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox Text="{Binding Options.TimestampList, UpdateSourceTrigger=PropertyChanged}"
+                                             Height="80"
+                                             AcceptsReturn="True"
+                                             TextWrapping="Wrap"
+                                             VerticalScrollBarVisibility="Auto"
+                                             FontFamily="{DynamicResource FontFamilyMono}"
+                                             FontSize="12"/>
+                                    <TextBlock Text="Format: HH:MM:SS.mmm or seconds (e.g. 0:01:30.500, 90.5)"
+                                               Style="{StaticResource TextMuted}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,4,0,0"/>
+                                </StackPanel>
+
+                                <!-- Time Range -->
+                                <StackPanel Visibility="{Binding Options.ModeTimeRange, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Range Start" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox Text="{Binding Options.RangeStart, UpdateSourceTrigger=PropertyChanged}"
+                                             FontFamily="{DynamicResource FontFamilyMono}"/>
+                                    <TextBlock Text="Range End" Style="{StaticResource LabelStyle}" Margin="0,8,0,0"/>
+                                    <TextBox Text="{Binding Options.RangeEnd, UpdateSourceTrigger=PropertyChanged}"
+                                             FontFamily="{DynamicResource FontFamilyMono}"/>
+                                </StackPanel>
+
+                                <!-- Every Nth Frame -->
+                                <StackPanel Visibility="{Binding Options.ModeEveryNthFrame, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Extract every N-th frame" Style="{StaticResource LabelStyle}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="80"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Slider Minimum="1" Maximum="1000"
+                                                Value="{Binding Options.EveryNthFrame}"
+                                                IsSnapToTickEnabled="True"
+                                                TickFrequency="1"
+                                                VerticalAlignment="Center"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding Options.EveryNthFrame}"
+                                                 Style="{StaticResource NumericTextBox}"
+                                                 Margin="8,0,0,0"/>
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- Evenly Distributed -->
+                                <StackPanel Visibility="{Binding Options.ModeEvenlyDistributed, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Number of frames to extract" Style="{StaticResource LabelStyle}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="80"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Slider Minimum="1" Maximum="500"
+                                                Value="{Binding Options.DistributedCount}"
+                                                IsSnapToTickEnabled="True"
+                                                TickFrequency="1"
+                                                VerticalAlignment="Center"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding Options.DistributedCount}"
+                                                 Style="{StaticResource NumericTextBox}"
+                                                 Margin="8,0,0,0"/>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource TextMuted}" Margin="0,4,0,0"
+                                               Text="Frames evenly spaced across the full video duration."/>
+                                </StackPanel>
+
+                                <!-- Single Frame -->
+                                <StackPanel Visibility="{Binding Options.ModeSingleFrame, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Timestamp" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox Text="{Binding Options.SingleTimestamp, UpdateSourceTrigger=PropertyChanged}"
+                                             FontFamily="{DynamicResource FontFamilyMono}"/>
+                                    <TextBlock Text="Format: HH:MM:SS.mmm"
+                                               Style="{StaticResource TextMuted}"
+                                               Margin="0,4,0,0"/>
+                                </StackPanel>
+
+                                <!-- Scene Change -->
+                                <StackPanel Visibility="{Binding Options.ModeSceneChange, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Scene Change Threshold" Style="{StaticResource LabelStyle}"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="80"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Slider Minimum="0.01" Maximum="1.0"
+                                                Value="{Binding Options.SceneChangeThreshold}"
+                                                VerticalAlignment="Center"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding Options.SceneChangeThreshold, StringFormat=F2}"
+                                                 Style="{StaticResource NumericTextBox}"
+                                                 Margin="8,0,0,0"/>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                               Text="Lower = more frames (sensitive). 0.4 recommended."/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- OUTPUT DIRECTORY -->
+                        <TextBlock Text="OUTPUT DIRECTORY" Style="{StaticResource LabelStyle}"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{Binding Options.OutputDirectory, UpdateSourceTrigger=PropertyChanged}"
+                                     VerticalContentAlignment="Center"/>
+                            <Button Grid.Column="1" Style="{StaticResource GhostButtonStyle}" Command="{Binding BrowseOutputDirectoryCommand}" Margin="4,0,0,0" ToolTip="Browse output folder...">
+                                <TextBlock Text="&#xED25;" Style="{StaticResource IconStyle}"/>
+                            </Button>
+                        </Grid>
+
+                        <Separator/>
+
+                        <!-- EXTRACT BUTTON -->
+                        <Button Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding StartExtractionCommand}"
+                                HorizontalAlignment="Stretch"
+                                Height="42"
+                                Margin="0,0,0,6">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="&#xE768;" Style="{StaticResource IconStyle}" Margin="0,0,8,0" FontSize="14"/>
+                                <TextBlock Text="Extract Frames" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Style="{StaticResource DangerButtonStyle}"
+                                Command="{Binding CancelExtractionCommand}"
+                                HorizontalAlignment="Stretch"
+                                Height="36"
+                                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"
+                                Margin="0,0,0,6">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="&#xE711;" Style="{StaticResource IconStyle}" Margin="0,0,8,0"/>
+                                <TextBlock Text="Cancel" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <GridSplitter Grid.Column="1"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch"
+                          Width="5"
+                          Background="Transparent"
+                          ResizeBehavior="PreviousAndNext"/>
+
+            
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Tab headers -->
+                <TabControl Grid.RowSpan="2"
+                            SelectedIndex="{Binding SelectedTabIndex}"
+                            Margin="0">
+
+                    
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE714;" Style="{StaticResource TabIconStyle}"/>
+                                <TextBlock Text="Video Info" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </TabItem.Header>
+                        <ScrollViewer Margin="20,12" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <!-- Empty state -->
+                                <Border Visibility="{Binding HasVideoLoaded, Converter={StaticResource InverseBoolToVisibility}}"
+                                        HorizontalAlignment="Center" Margin="0,60,0,0">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="&#xE714;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI Symbol" FontSize="64" HorizontalAlignment="Center" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.3"/>
+                                        <TextBlock Text="No video loaded"
+                                                   FontSize="{DynamicResource FontSizeLarge}"
+                                                   Foreground="{DynamicResource TextMutedBrush}"
+                                                   HorizontalAlignment="Center"
+                                                   Margin="0,12,0,4"/>
+                                        <TextBlock Text="Drop a video file or use the file browser on the left"
+                                                   Style="{StaticResource TextMuted}"
+                                                   HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Video info grid -->
+                                <StackPanel Visibility="{Binding HasVideoLoaded, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Text="Video Information"
+                                               Style="{StaticResource SectionTitle}"/>
+
+                                    <!-- Info cards row -->
+                                    <WrapPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                        <!-- Resolution card -->
+                                        <Border Style="{StaticResource CardStyle}" Margin="0,0,8,8" MinWidth="150">
+                                            <StackPanel>
+                                                <TextBlock Text="RESOLUTION" Style="{StaticResource LabelStyle}"/>
+                                                <TextBlock Text="{Binding VideoInfo.ResolutionDisplay}"
+                                                           FontSize="{DynamicResource FontSizeLarge}"
+                                                           FontWeight="Bold"
+                                                           Foreground="{DynamicResource AccentBrush}"/>
+                                                <TextBlock Text="{Binding VideoInfo.VideoCodec}"
+                                                           Style="{StaticResource TextMuted}"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Duration card -->
+                                        <Border Style="{StaticResource CardStyle}" Margin="0,0,8,8" MinWidth="150">
+                                            <StackPanel>
+                                                <TextBlock Text="DURATION" Style="{StaticResource LabelStyle}"/>
+                                                <TextBlock Text="{Binding VideoInfo.DurationDisplay}"
+                                                           FontSize="{DynamicResource FontSizeLarge}"
+                                                           FontWeight="Bold"
+                                                           Foreground="{DynamicResource AccentBrush}"/>
+                                                <TextBlock Text="{Binding VideoInfo.Format}"
+                                                           Style="{StaticResource TextMuted}"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Frame rate card -->
+                                        <Border Style="{StaticResource CardStyle}" Margin="0,0,8,8" MinWidth="150">
+                                            <StackPanel>
+                                                <TextBlock Text="FRAME RATE" Style="{StaticResource LabelStyle}"/>
+                                                <TextBlock Text="{Binding VideoInfo.FrameRateDisplay}"
+                                                           FontSize="{DynamicResource FontSizeLarge}"
+                                                           FontWeight="Bold"
+                                                           Foreground="{DynamicResource AccentBrush}"/>
+                                                <TextBlock Text="{Binding VideoInfo.TotalFrames, StringFormat='{}{0:N0} total frames'}"
+                                                           Style="{StaticResource TextMuted}"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- File size card -->
+                                        <Border Style="{StaticResource CardStyle}" Margin="0,0,8,8" MinWidth="150">
+                                            <StackPanel>
+                                                <TextBlock Text="FILE SIZE" Style="{StaticResource LabelStyle}"/>
+                                                <TextBlock Text="{Binding VideoInfo.FileSizeDisplay}"
+                                                           FontSize="{DynamicResource FontSizeLarge}"
+                                                           FontWeight="Bold"
+                                                           Foreground="{DynamicResource AccentBrush}"/>
+                                                <TextBlock Text="{Binding VideoInfo.BitRateDisplay}"
+                                                           Style="{StaticResource TextMuted}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </WrapPanel>
+
+                                    <!-- Detailed properties -->
+                                    <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Column 1 -->
+                                            <StackPanel Margin="0,0,16,0">
+                                                <TextBlock Text="VIDEO STREAM" Style="{StaticResource LabelStyle}"/>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="130"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Codec:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding VideoInfo.VideoCodec}" FontWeight="SemiBold"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="130"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Profile:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding VideoInfo.Profile}"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="130"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Pixel Format:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding VideoInfo.PixelFormat}"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="130"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Color Space:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding VideoInfo.ColorSpace}"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="130"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Bit Depth:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding VideoInfo.BitDepth, StringFormat='{}{0}-bit'}"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="130"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Rotation:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding VideoInfo.Rotation, FallbackValue='   '}"/>
+                                                </Grid>
+                                            </StackPanel>
+
+                                            <!-- Column 2 -->
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="AUDIO STREAM" Style="{StaticResource LabelStyle}"/>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="120"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Has Audio:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding VideoInfo.HasAudio}"
+                                                               Foreground="{DynamicResource AccentBrush}"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="120"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Codec:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding VideoInfo.AudioCodec, FallbackValue='   '}"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="120"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Channels:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding VideoInfo.AudioChannels}"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="120"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Sample Rate:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding VideoInfo.AudioSampleRate, StringFormat='{}{0} Hz'}"/>
+                                                </Grid>
+
+                                                <Separator Margin="0,12"/>
+
+                                                <TextBlock Text="FILE INFO" Style="{StaticResource LabelStyle}"/>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="120"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Container:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding VideoInfo.Format}" TextWrapping="Wrap"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="120"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Bitrate:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding VideoInfo.BitRateDisplay}"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="120"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Path:" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding InputFilePath}"
+                                                               TextWrapping="Wrap"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource TextMutedBrush}"/>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE898;" Style="{StaticResource TabIconStyle}"/>
+                                <TextBlock Text="Output" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </TabItem.Header>
+                        <ScrollViewer Margin="20,12" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="Output Settings" Style="{StaticResource SectionTitle}"/>
+
+                                <!-- Format selection -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="IMAGE FORMAT" Style="{StaticResource LabelStyle}"/>
+                                        <WrapPanel Orientation="Horizontal">
+                                            <RadioButton Content="JPEG"
+                                                         IsChecked="{Binding Options.OutputFormat, Converter={StaticResource EnumToBool}, ConverterParameter=Jpeg}"
+                                                         Margin="0,0,16,0"/>
+                                            <RadioButton Content="PNG"
+                                                         IsChecked="{Binding Options.OutputFormat, Converter={StaticResource EnumToBool}, ConverterParameter=Png}"
+                                                         Margin="0,0,16,0"/>
+                                            <RadioButton Content="WebP"
+                                                         IsChecked="{Binding Options.OutputFormat, Converter={StaticResource EnumToBool}, ConverterParameter=Webp}"
+                                                         Margin="0,0,16,0"/>
+                                            <RadioButton Content="BMP"
+                                                         IsChecked="{Binding Options.OutputFormat, Converter={StaticResource EnumToBool}, ConverterParameter=Bmp}"
+                                                         Margin="0,0,16,0"/>
+                                            <RadioButton Content="TIFF"
+                                                         IsChecked="{Binding Options.OutputFormat, Converter={StaticResource EnumToBool}, ConverterParameter=Tiff}"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Quality (JPEG/WebP) -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12"
+                                        Visibility="{Binding Options.ShowQualitySlider, Converter={StaticResource BoolToVisibility}}">
+                                    <StackPanel>
+                                        <TextBlock Text="QUALITY" Style="{StaticResource LabelStyle}"/>
+                                        <RadioButton Content="Use quality preset"
+                                                     IsChecked="{Binding Options.UseQualityPreset}"/>
+                                        <ComboBox ItemsSource="{Binding Options.QualityPresets}"
+                                                  SelectedItem="{Binding Options.QualityPreset}"
+                                                  IsEnabled="{Binding Options.UseQualityPreset}"
+                                                  Margin="0,6,0,8">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Converter={StaticResource QualityPresetDisplay}}"/>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <RadioButton Content="Custom quality"
+                                                     IsChecked="{Binding Options.UseQualityPreset, Converter={StaticResource InverseBool}}"/>
+                                        <Grid IsEnabled="{Binding Options.UseQualityPreset, Converter={StaticResource InverseBool}}"
+                                              Margin="0,6,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="80"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Slider Minimum="1" Maximum="100"
+                                                    Value="{Binding Options.CustomQuality}"
+                                                    IsSnapToTickEnabled="True"
+                                                    TickFrequency="1"
+                                                    VerticalAlignment="Center"/>
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding Options.CustomQuality}"
+                                                     Style="{StaticResource NumericTextBox}"
+                                                     Margin="8,0,0,0"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- PNG compression -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12"
+                                        Visibility="{Binding Options.IsPngFormat, Converter={StaticResource BoolToVisibility}}">
+                                    <StackPanel>
+                                        <TextBlock Text="PNG COMPRESSION LEVEL (0-9)" Style="{StaticResource LabelStyle}"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="80"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Slider Minimum="0" Maximum="9"
+                                                    Value="{Binding Options.PngCompression}"
+                                                    IsSnapToTickEnabled="True"
+                                                    TickFrequency="1"
+                                                    VerticalAlignment="Center"/>
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding Options.PngCompression}"
+                                                     Style="{StaticResource NumericTextBox}"
+                                                     Margin="8,0,0,0"/>
+                                        </Grid>
+                                        <TextBlock Text="0 = fastest/larger, 9 = slowest/smallest"
+                                                   Style="{StaticResource TextMuted}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- File naming -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="FILE NAME PATTERN" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox Text="{Binding Options.FileNamePattern, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontFamily="{DynamicResource FontFamilyMono}"/>
+                                        <TextBlock Style="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,4,0,0">
+                                            Use printf-style format: %04d for 4-digit zero-padded number.
+                                            Extension is added automatically.
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Resize -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <CheckBox Content="Resize output frames"
+                                                  IsChecked="{Binding Options.EnableResize}"/>
+                                        <StackPanel IsEnabled="{Binding Options.EnableResize}"
+                                                    Margin="0,8,0,0">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="WIDTH (px)" Style="{StaticResource LabelStyle}"/>
+                                                    <TextBox Text="{Binding Options.ResizeWidth, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="  "
+                                                           VerticalAlignment="Bottom"
+                                                           Margin="8,0,8,6"
+                                                           Foreground="{DynamicResource TextMutedBrush}"/>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="HEIGHT (px)" Style="{StaticResource LabelStyle}"/>
+                                                    <TextBox Text="{Binding Options.ResizeHeight, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </StackPanel>
+                                            </Grid>
+                                            <CheckBox Content="Maintain aspect ratio"
+                                                      IsChecked="{Binding Options.MaintainAspectRatio}"
+                                                      Margin="0,8,0,0"/>
+                                            <TextBlock Style="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,4,0,0">
+                                                Leave width or height as 0 to scale proportionally to the other dimension.
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE790;" Style="{StaticResource TabIconStyle}"/>
+                                <TextBlock Text="Filters" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </TabItem.Header>
+                        <ScrollViewer Margin="20,12" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="Image Filters" Style="{StaticResource SectionTitle}"/>
+
+                                <!-- Quick toggles -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="QUICK FILTERS" Style="{StaticResource LabelStyle}"/>
+                                        <WrapPanel>
+                                            <CheckBox Content="Grayscale"
+                                                      IsChecked="{Binding Options.EnableGrayscale}"
+                                                      Margin="0,0,16,4"/>
+                                            <CheckBox Content="Deinterlace"
+                                                      IsChecked="{Binding Options.EnableDeinterlace}"
+                                                      Margin="0,0,16,4"/>
+                                            <CheckBox Content="Denoise (hqdn3d)"
+                                                      IsChecked="{Binding Options.EnableDenoise}"
+                                                      Margin="0,0,16,4"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Color adjustments -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="COLOR ADJUSTMENTS" Style="{StaticResource LabelStyle}"/>
+
+                                        <!-- Brightness -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="90"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="70"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Brightness" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            <Slider Grid.Column="1" Minimum="-1" Maximum="1"
+                                                    Value="{Binding Options.Brightness}"
+                                                    VerticalAlignment="Center" Margin="8,0"/>
+                                            <TextBox Grid.Column="2"
+                                                     Text="{Binding Options.Brightness, StringFormat=F2}"
+                                                     Style="{StaticResource NumericTextBox}"/>
+                                        </Grid>
+
+                                        <!-- Contrast -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="90"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="70"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Contrast" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="2"
+                                                    Value="{Binding Options.Contrast}"
+                                                    VerticalAlignment="Center" Margin="8,0"/>
+                                            <TextBox Grid.Column="2"
+                                                     Text="{Binding Options.Contrast, StringFormat=F2}"
+                                                     Style="{StaticResource NumericTextBox}"/>
+                                        </Grid>
+
+                                        <!-- Saturation -->
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="90"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="70"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Saturation" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="3"
+                                                    Value="{Binding Options.Saturation}"
+                                                    VerticalAlignment="Center" Margin="8,0"/>
+                                            <TextBox Grid.Column="2"
+                                                     Text="{Binding Options.Saturation, StringFormat=F2}"
+                                                     Style="{StaticResource NumericTextBox}"/>
+                                        </Grid>
+
+                                        <!-- Gamma -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="90"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="70"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Gamma" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            <Slider Grid.Column="1" Minimum="0.1" Maximum="10"
+                                                    Value="{Binding Options.Gamma}"
+                                                    VerticalAlignment="Center" Margin="8,0"/>
+                                            <TextBox Grid.Column="2"
+                                                     Text="{Binding Options.Gamma, StringFormat=F2}"
+                                                     Style="{StaticResource NumericTextBox}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Sharpness -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <CheckBox Content="Enable Sharpness (unsharp mask)"
+                                                  IsChecked="{Binding Options.EnableSharpness}"/>
+                                        <Grid IsEnabled="{Binding Options.EnableSharpness}" Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="90"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="70"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Amount" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            <Slider Grid.Column="1" Minimum="0.1" Maximum="5"
+                                                    Value="{Binding Options.SharpnessAmount}"
+                                                    VerticalAlignment="Center" Margin="8,0"/>
+                                            <TextBox Grid.Column="2"
+                                                     Text="{Binding Options.SharpnessAmount, StringFormat=F1}"
+                                                     Style="{StaticResource NumericTextBox}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Overlay -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="OVERLAY TEXT" Style="{StaticResource LabelStyle}"/>
+                                        <CheckBox Content="Draw timestamp on frame"
+                                                  IsChecked="{Binding Options.DrawTimestamp}"
+                                                  Margin="0,0,0,4"/>
+                                        <CheckBox Content="Draw frame number on frame"
+                                                  IsChecked="{Binding Options.DrawFrameNumber}"/>
+                                        <TextBlock Style="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                                   Text="Requires Arial font at /Windows/Fonts/arial.ttf (standard on Windows)."/>
+                                    </StackPanel>
+                                </Border>
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE713;" Style="{StaticResource TabIconStyle}"/>
+                                <TextBlock Text="Advanced" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </TabItem.Header>
+                        <ScrollViewer Margin="20,12" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="Advanced Options" Style="{StaticResource SectionTitle}"/>
+
+                                <!-- Trim -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <CheckBox Content="Trim input before processing"
+                                                  IsChecked="{Binding Options.EnableTrim}"/>
+                                        <Grid IsEnabled="{Binding Options.EnableTrim}" Margin="0,8,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="START" Style="{StaticResource LabelStyle}"/>
+                                                <TextBox Text="{Binding Options.TrimStart, UpdateSourceTrigger=PropertyChanged}"
+                                                         FontFamily="{DynamicResource FontFamilyMono}"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="   "
+                                                       VerticalAlignment="Bottom"
+                                                       Margin="12,0,12,6"
+                                                       Foreground="{DynamicResource TextMutedBrush}"/>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="END" Style="{StaticResource LabelStyle}"/>
+                                                <TextBox Text="{Binding Options.TrimEnd, UpdateSourceTrigger=PropertyChanged}"
+                                                         FontFamily="{DynamicResource FontFamilyMono}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <TextBlock Style="{StaticResource TextMuted}" Margin="0,6,0,0">
+                                            Applied using -ss and -t (fast seek). Format: HH:MM:SS.mmm
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Hardware acceleration -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <CheckBox Content="Hardware acceleration"
+                                                  IsChecked="{Binding Options.UseHardwareAcceleration}"/>
+                                        <ComboBox ItemsSource="{Binding Options.HwAccelTypes}"
+                                                  SelectedItem="{Binding Options.HwAccelType}"
+                                                  IsEnabled="{Binding Options.UseHardwareAcceleration}"
+                                                  Margin="0,8,0,0"/>
+                                        <TextBlock Style="{StaticResource TextMuted}" TextWrapping="Wrap" Margin="0,4,0,0">
+                                            Enables GPU-accelerated decoding. 'auto' is recommended.
+                                            'dxva2'/'d3d11va' for AMD/Intel/NVIDIA on Windows.
+                                            'cuda' for NVIDIA only.
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Thread count -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="CPU THREADS" Style="{StaticResource LabelStyle}"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="80"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Slider Minimum="0" Maximum="32"
+                                                    Value="{Binding Options.ThreadCount}"
+                                                    IsSnapToTickEnabled="True"
+                                                    TickFrequency="1"
+                                                    VerticalAlignment="Center"/>
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding Options.ThreadCount}"
+                                                     Style="{StaticResource NumericTextBox}"
+                                                     Margin="8,0,0,0"/>
+                                        </Grid>
+                                        <TextBlock Style="{StaticResource TextMuted}"
+                                                   Text="0 = auto (use all available cores)."/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- FFmpeg paths -->
+                                <Border Style="{StaticResource CardStyle}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="FFMPEG EXECUTABLE PATHS" Style="{StaticResource LabelStyle}"/>
+
+                                        <TextBlock Text="ffmpeg.exe" Style="{StaticResource LabelStyle}" Margin="0,4,0,2"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Text="{Binding FFmpegPath}"
+                                                     IsReadOnly="True"
+                                                     FontFamily="{DynamicResource FontFamilyMono}"
+                                                     FontSize="11"/>
+                                            <Button Grid.Column="1" Content="Browse"
+                                                    Style="{StaticResource SecondaryButtonStyle}"
+                                                    Margin="6,0,0,0"
+                                                    Command="{Binding LocateFFmpegCommand}"/>
+                                        </Grid>
+
+                                        <TextBlock Text="ffprobe.exe" Style="{StaticResource LabelStyle}" Margin="0,10,0,2"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Text="{Binding FFprobePath}"
+                                                     IsReadOnly="True"
+                                                     FontFamily="{DynamicResource FontFamilyMono}"
+                                                     FontSize="11"/>
+                                            <Button Grid.Column="1" Content="Browse"
+                                                    Style="{StaticResource SecondaryButtonStyle}"
+                                                    Margin="6,0,0,0"
+                                                    Command="{Binding LocateFFprobeCommand}"/>
+                                        </Grid>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                            <TextBlock Text="FFmpeg: " Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            <TextBlock Text="{Binding FFmpegVersion}"
+                                                       Foreground="{DynamicResource AccentBrush}"
+                                                       FontFamily="{DynamicResource FontFamilyMono}"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="FFprobe: " Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            <TextBlock Text="{Binding FFprobeVersion}"
+                                                       Foreground="{DynamicResource AccentBrush}"
+                                                       FontFamily="{DynamicResource FontFamilyMono}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xEB9F;" Style="{StaticResource TabIconStyle}"/>
+                                <TextBlock Text="Results" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </TabItem.Header>
+                        <Grid Margin="16,12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Summary bar -->
+                            <Border Grid.Row="0"
+                                    Style="{StaticResource CardStyle}"
+                                    Margin="0,0,0,8"
+                                    Visibility="{Binding HasResults, Converter={StaticResource BoolToVisibility}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal">
+                                        <StackPanel>
+                                            <TextBlock Text="FRAMES EXTRACTED" Style="{StaticResource LabelStyle}"/>
+                                            <TextBlock Text="{Binding TotalFramesExtracted}"
+                                                       FontSize="{DynamicResource FontSizeLarge}"
+                                                       FontWeight="Bold"
+                                                       Foreground="{DynamicResource AccentBrush}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <Button Style="{StaticResource SecondaryButtonStyle}"
+                                                Command="{Binding OpenOutputFolderCommand}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xED25;" Style="{StaticResource IconStyle}" Margin="0,0,6,0"/>
+                                                <TextBlock Text="Open Folder" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{StaticResource GhostButtonStyle}"
+                                                Command="{Binding ClearResultsCommand}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE74D;" Style="{StaticResource IconStyle}" Margin="0,0,6,0"/>
+                                                <TextBlock Text="Clear" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Empty state -->
+                            <Border Grid.Row="1"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Visibility="{Binding HasResults, Converter={StaticResource InverseBoolToVisibility}}">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="&#xE714;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets, Segoe UI Symbol" FontSize="64" HorizontalAlignment="Center" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.3"/>
+                                    <TextBlock Text="No frames extracted yet"
+                                               FontSize="{DynamicResource FontSizeLarge}"
+                                               Foreground="{DynamicResource TextMutedBrush}"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,12,0,4"/>
+                                    <TextBlock Text="Run an extraction to see results here"
+                                               Style="{StaticResource TextMuted}"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Frame list -->
+                            <DataGrid Grid.Row="1"
+                                      ItemsSource="{Binding ExtractedFrames}"
+                                      SelectedItem="{Binding SelectedFrame}"
+                                      Visibility="{Binding HasResults, Converter={StaticResource BoolToVisibility}}"
+                                      MouseDoubleClick="ResultsGrid_DoubleClick">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="#" Binding="{Binding Index}" Width="50"/>
+                                    <DataGridTextColumn Header="File Name" Binding="{Binding FileName}" Width="*"/>
+                                    <DataGridTextColumn Header="Timestamp" Binding="{Binding TimestampDisplay}" Width="120"/>
+                                    <DataGridTextColumn Header="Size" Binding="{Binding FileSizeDisplay}" Width="90"/>
+                                    <DataGridTextColumn Header="Resolution" Binding="{Binding ResolutionDisplay}" Width="100"/>
+                                    <DataGridTemplateColumn Header="Status" Width="70">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Foreground="{Binding Success, Converter={StaticResource SuccessBrushConv}}"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource IconStyle}">
+                                                            <Setter Property="Text" Value="&#xE73E;"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Success}" Value="False">
+                                                                    <Setter Property="Text" Value="&#xE711;"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Bottom action bar -->
+                            <StackPanel Grid.Row="2" Orientation="Horizontal"
+                                        Margin="0,8,0,0"
+                                        Visibility="{Binding HasResults, Converter={StaticResource BoolToVisibility}}">
+                                <Button Style="{StaticResource GhostButtonStyle}"
+                                        Command="{Binding OpenSelectedFrameCommand}"
+                                        IsEnabled="{Binding SelectedFrame, Converter={StaticResource NullToBool}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE8A7;" Style="{StaticResource IconStyle}" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Open Selected" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </TabItem>
+
+                    
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE756;" Style="{StaticResource TabIconStyle}"/>
+                                <TextBlock Text="Command" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </TabItem.Header>
+                        <Grid Margin="20,12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                                <TextBlock Text="FFmpeg Command Preview"
+                                           Style="{StaticResource SectionTitle}"/>
+                                <TextBlock Style="{StaticResource TextMuted}">
+                                    This is the exact command that will be executed. You can copy and run it manually.
+                                </TextBlock>
+                            </StackPanel>
+
+                            <Border Grid.Row="1"
+                                    Style="{StaticResource SurfaceCard}"
+                                    Background="{DynamicResource BackgroundBrush}">
+                                <TextBox Text="{Binding CommandPreview, Mode=OneWay}"
+                                         Style="{StaticResource CodeTextBox}"
+                                         IsReadOnly="True"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Padding="0"/>
+                            </Border>
+
+                            <Button Grid.Row="2"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Command="{Binding CopyCommandToClipboardCommand}"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,8,0,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8C8;" Style="{StaticResource IconStyle}" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Copy to Clipboard" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+        </Grid>
+
+        
+        <Border Grid.Row="2"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource DividerBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="16,10"
+                Visibility="{Binding ShowProgress, Converter={StaticResource BoolToVisibility}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <ProgressBar Value="{Binding ProgressValue}"
+                                 Maximum="100"
+                                 Margin="0,0,0,6"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding ProgressText}"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding ProgressFps}"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   Style="{StaticResource TextSecondary}"/>
+                        <TextBlock Text="{Binding EstimatedTime}"
+                                   Style="{StaticResource TextMuted}"/>
+                    </StackPanel>
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Content="Cancel"
+                        Style="{StaticResource DangerButtonStyle}"
+                        Command="{Binding CancelExtractionCommand}"
+                        VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        
+        <Border Grid.Row="3"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource DividerBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="16,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="{Binding StatusMessage}"
+                           Style="{StaticResource TextSecondary}"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"/>
+
+                <!-- Busy indicator -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                            Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Processing..."
+                               Foreground="{DynamicResource AccentBrush}"
+                               Style="{StaticResource TextSecondary}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Busy overlay -->
+        <Grid Grid.Row="1"
+              Background="#44000000"
+              Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+            <Border Background="{DynamicResource CardBrush}"
+                    BorderBrush="{DynamicResource AccentBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource CornerRadiusLarge}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="40,24">
+                <StackPanel HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock Text="&#xE768;" Style="{StaticResource IconStyle}" Foreground="{DynamicResource AccentBrush}" FontSize="18" Margin="0,0,8,0"/>
+                        <TextBlock Text="Extracting Frames..."
+                                   FontSize="{DynamicResource FontSizeLarge}"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource AccentBrush}"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding ProgressText}"
+                               HorizontalAlignment="Center"
+                               Margin="0,8,0,0"/>
+                    <ProgressBar Value="{Binding ProgressValue}"
+                                 Maximum="100"
+                                 Width="300"
+                                 Margin="0,12,0,8"/>
+                    <Button Content="Cancel"
+                            Style="{StaticResource DangerButtonStyle}"
+                            Command="{Binding CancelExtractionCommand}"
+                            HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
+
+
+
+
